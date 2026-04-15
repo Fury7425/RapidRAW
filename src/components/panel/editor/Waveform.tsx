@@ -111,17 +111,13 @@ const FakeHistogramLoader = () => {
     let lastTime = 0;
 
     const ANIMATION_SPEED = 1.0;
-    const FRAME_INTERVAL = 1000 / 30;
 
     const render = (currentTime: number) => {
-      animationFrameId = requestAnimationFrame(render);
-      if (document.hidden) return;
-      if (lastTime === 0) lastTime = currentTime - FRAME_INTERVAL;
-      const elapsed = currentTime - lastTime;
-      if (elapsed < FRAME_INTERVAL) return;
+      if (lastTime === 0) lastTime = currentTime;
+
+      let dt = (currentTime - lastTime) / 1000;
       lastTime = currentTime;
 
-      let dt = elapsed / 1000;
       if (dt > 0.05) dt = 0.05;
 
       time += dt * ANIMATION_SPEED;
@@ -158,6 +154,8 @@ const FakeHistogramLoader = () => {
       drawChannel('rgba(255, 107, 107, 0.55)', 'rgba(255, 107, 107, 0.3)', 0, 5, 0.8);
       drawChannel('rgba(107, 203, 119, 0.55)', 'rgba(107, 203, 119, 0.3)', 2, 4, -1.0);
       drawChannel('rgba(77, 150, 255, 0.55)', 'rgba(77, 150, 255, 0.3)', 4, 6, 0.6);
+
+      animationFrameId = requestAnimationFrame(render);
     };
 
     animationFrameId = requestAnimationFrame(render);
@@ -288,17 +286,12 @@ const FakeWaveformLoader = ({ mode }: { mode: string }) => {
     }
 
     let animationFrameId: number;
-    const FRAME_INTERVAL = 1000 / 30;
 
     const render = (time: number) => {
-      animationFrameId = requestAnimationFrame(render);
-      if (document.hidden) return;
-      if (lastTimeRef.current === 0) lastTimeRef.current = time - FRAME_INTERVAL;
-      const elapsed = time - lastTimeRef.current;
-      if (elapsed < FRAME_INTERVAL) return;
+      if (lastTimeRef.current === 0) lastTimeRef.current = time;
+      let dt = (time - lastTimeRef.current) / 1000;
       lastTimeRef.current = time;
 
-      let dt = elapsed / 1000;
       if (dt > 0.05) dt = 0.05;
 
       let frameDt = dt;
@@ -436,6 +429,7 @@ const FakeWaveformLoader = ({ mode }: { mode: string }) => {
       }
 
       ctx.putImageData(imgData, 0, 0);
+      animationFrameId = requestAnimationFrame(render);
     };
 
     animationFrameId = requestAnimationFrame(render);
