@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { AlertOctagon } from 'lucide-react';
 import { WaveformData } from '../../ui/AppProperties';
@@ -47,27 +47,31 @@ const modeButtons = [
 ];
 
 const HistogramView = ({ histogram }: { histogram: any }) => {
-  if (!histogram || !histogram.red || !histogram.green || !histogram.blue) return null;
+  const channels = useMemo(() => {
+    if (!histogram?.red || !histogram?.green || !histogram?.blue) return null;
 
-  const redMax = Math.max(...(histogram.red || [0]));
-  const greenMax = Math.max(...(histogram.green || [0]));
-  const blueMax = Math.max(...(histogram.blue || [0]));
-  const globalMax = Math.max(redMax, greenMax, blueMax, 1);
+    const redMax = Math.max(...(histogram.red as number[]));
+    const greenMax = Math.max(...(histogram.green as number[]));
+    const blueMax = Math.max(...(histogram.blue as number[]));
+    const globalMax = Math.max(redMax, greenMax, blueMax, 1);
 
-  const getFill = (data: number[]) => {
-    const pathData = data.map((val, i) => `${(i / 255) * 255},${255 - (val / globalMax) * 255}`).join(' L');
-    return `M0,255 L${pathData} L255,255 Z`;
-  };
+    const getFill = (data: number[]) => {
+      const pathData = data.map((val, i) => `${(i / 255) * 255},${255 - (val / globalMax) * 255}`).join(' L');
+      return `M0,255 L${pathData} L255,255 Z`;
+    };
 
-  const getLine = (data: number[]) => {
-    return 'M' + data.map((val, i) => `${(i / 255) * 255},${255 - (val / globalMax) * 255}`).join(' L');
-  };
+    const getLine = (data: number[]) => {
+      return 'M' + data.map((val, i) => `${(i / 255) * 255},${255 - (val / globalMax) * 255}`).join(' L');
+    };
 
-  const channels = [
-    { key: 'red', color: '#FF6B6B', data: histogram.red },
-    { key: 'green', color: '#6BCB77', data: histogram.green },
-    { key: 'blue', color: '#4D96FF', data: histogram.blue },
-  ];
+    return [
+      { key: 'red', color: '#FF6B6B', fill: getFill(histogram.red), line: getLine(histogram.red) },
+      { key: 'green', color: '#6BCB77', fill: getFill(histogram.green), line: getLine(histogram.green) },
+      { key: 'blue', color: '#4D96FF', fill: getFill(histogram.blue), line: getLine(histogram.blue) },
+    ];
+  }, [histogram?.red, histogram?.green, histogram?.blue]);
+
+  if (!channels) return null;
 
   return (
     <svg
@@ -75,23 +79,20 @@ const HistogramView = ({ histogram }: { histogram: any }) => {
       className="w-full h-full overflow-visible pointer-events-none"
       preserveAspectRatio="none"
     >
-      {channels.map((ch) => {
-        if (!ch.data || ch.data.length === 0) return null;
-        return (
-          <g key={ch.key} style={{ mixBlendMode: 'lighten' }}>
-            <path d={getFill(ch.data)} fill={ch.color} fillOpacity={0.4} />
-            <path
-              d={getLine(ch.data)}
-              fill="none"
-              stroke={ch.color}
-              strokeWidth={1.5}
-              strokeOpacity={1.8}
-              vectorEffect="non-scaling-stroke"
-              strokeLinejoin="round"
-            />
-          </g>
-        );
-      })}
+      {channels.map((ch) => (
+        <g key={ch.key} style={{ mixBlendMode: 'lighten' }}>
+          <path d={ch.fill} fill={ch.color} fillOpacity={0.4} />
+          <path
+            d={ch.line}
+            fill="none"
+            stroke={ch.color}
+            strokeWidth={1.5}
+            strokeOpacity={1.8}
+            vectorEffect="non-scaling-stroke"
+            strokeLinejoin="round"
+          />
+        </g>
+      ))}
     </svg>
   );
 };
@@ -110,13 +111,17 @@ const FakeHistogramLoader = () => {
     let lastTime = 0;
 
     const ANIMATION_SPEED = 1.0;
+    const FRAME_INTERVAL = 1000 / 30;
 
     const render = (currentTime: number) => {
-      if (lastTime === 0) lastTime = currentTime;
-
-      let dt = (currentTime - lastTime) / 1000;
+      animationFrameId = requestAnimationFrame(render);
+      if (document.hidden) return;
+      if (lastTime === 0) lastTime = currentTime - FRAME_INTERVAL;
+      const elapsed = currentTime - lastTime;
+      if (elapsed < FRAME_INTERVAL) return;
       lastTime = currentTime;
 
+      let dt = elapsed / 1000;
       if (dt > 0.05) dt = 0.05;
 
       time += dt * ANIMATION_SPEED;
@@ -153,8 +158,6 @@ const FakeHistogramLoader = () => {
       drawChannel('rgba(255, 107, 107, 0.55)', 'rgba(255, 107, 107, 0.3)', 0, 5, 0.8);
       drawChannel('rgba(107, 203, 119, 0.55)', 'rgba(107, 203, 119, 0.3)', 2, 4, -1.0);
       drawChannel('rgba(77, 150, 255, 0.55)', 'rgba(77, 150, 255, 0.3)', 4, 6, 0.6);
-
-      animationFrameId = requestAnimationFrame(render);
     };
 
     animationFrameId = requestAnimationFrame(render);
@@ -285,12 +288,17 @@ const FakeWaveformLoader = ({ mode }: { mode: string }) => {
     }
 
     let animationFrameId: number;
+    const FRAME_INTERVAL = 1000 / 30;
 
     const render = (time: number) => {
-      if (lastTimeRef.current === 0) lastTimeRef.current = time;
-      let dt = (time - lastTimeRef.current) / 1000;
+      animationFrameId = requestAnimationFrame(render);
+      if (document.hidden) return;
+      if (lastTimeRef.current === 0) lastTimeRef.current = time - FRAME_INTERVAL;
+      const elapsed = time - lastTimeRef.current;
+      if (elapsed < FRAME_INTERVAL) return;
       lastTimeRef.current = time;
 
+      let dt = elapsed / 1000;
       if (dt > 0.05) dt = 0.05;
 
       let frameDt = dt;
@@ -428,7 +436,6 @@ const FakeWaveformLoader = ({ mode }: { mode: string }) => {
       }
 
       ctx.putImageData(imgData, 0, 0);
-      animationFrameId = requestAnimationFrame(render);
     };
 
     animationFrameId = requestAnimationFrame(render);
