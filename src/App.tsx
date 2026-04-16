@@ -1540,7 +1540,7 @@ function App() {
           isInteractive: dragging,
           targetResolution: targetRes || null,
           roi: roi || null,
-          computeWaveform: !!isWaveformVisible && !dragging,
+          computeWaveform: !!isWaveformVisible,
           activeWaveformChannel: activeWaveformChannelRef.current || null,
         });
 
