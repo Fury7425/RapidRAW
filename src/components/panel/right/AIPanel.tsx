@@ -142,6 +142,7 @@ const BrushTools = ({ settings, onSettingsChange }: { settings: any; onSettingsC
       onChange={(e: any) => onSettingsChange((s: any) => ({ ...s, size: Number(e.target.value) }))}
       step={1}
       value={settings.size}
+      fillOrigin="min"
     />
     <Slider
       defaultValue={50}
@@ -151,6 +152,7 @@ const BrushTools = ({ settings, onSettingsChange }: { settings: any; onSettingsC
       onChange={(e: any) => onSettingsChange((s: any) => ({ ...s, feather: Number(e.target.value) }))}
       step={1}
       value={settings.feather}
+      fillOrigin="min"
     />
     <div className="grid grid-cols-2 gap-2 pt-2">
       <button
@@ -570,7 +572,8 @@ export default function AIPanel({
 
   const handleDuplicateAndInvertPatchContainer = (container: AiPatch) => {
     const patchIndex = (adjustments.aiPatches || []).findIndex((patch) => patch.id === container.id);
-    const duplicatedContainer = clonePatchData(container, { invert: true, rename: true });
+    const duplicatedContainer = clonePatchData(container, { invert: true, rename: false });
+    duplicatedContainer.name = `${container.name} Inverted`;
 
     insertPatchContainer(duplicatedContainer, patchIndex >= 0 ? patchIndex + 1 : undefined);
   };
@@ -593,9 +596,19 @@ export default function AIPanel({
     insertSubMaskIntoContainer(containerId, duplicatedSubMask, insertIndex);
   };
 
-  const handleDuplicateAndInvertSubMask = (containerId: string, subMask: SubMask, insertIndex?: number) => {
-    const duplicatedSubMask = cloneSubMaskData(subMask, { invert: true, rename: true });
-    insertSubMaskIntoContainer(containerId, duplicatedSubMask, insertIndex);
+  const handleDuplicateAndInvertSubMask = (containerId: string, subMask: SubMask) => {
+    const parentContainer = (adjustments.aiPatches || []).find((p) => p.id === containerId);
+    if (!parentContainer) return;
+
+    const duplicatedSubMask = cloneSubMaskData(subMask, { invert: true, rename: false });
+    const newContainer = clonePatchData(parentContainer, { rename: false });
+
+    newContainer.name = `${getSubMaskName(subMask)} Inverted`;
+    newContainer.subMasks = [duplicatedSubMask];
+    newContainer.invert = false;
+
+    const parentIndex = (adjustments.aiPatches || []).findIndex((p) => p.id === containerId);
+    insertPatchContainer(newContainer, parentIndex >= 0 ? parentIndex + 1 : undefined);
   };
 
   const handlePasteSubMask = (containerId: string, insertIndex?: number) => {
@@ -1246,7 +1259,7 @@ function ContainerRow({
                   updateSubMask={updateSubMask}
                   handleDelete={() => handleDeleteSubMask(container.id, subMask.id)}
                   handleDuplicate={() => handleDuplicateSubMask(container.id, subMask, index + 1)}
-                  handleDuplicateAndInvert={() => handleDuplicateAndInvertSubMask(container.id, subMask, index + 1)}
+                  handleDuplicateAndInvert={() => handleDuplicateAndInvertSubMask(container.id, subMask)}
                   handlePaste={() => handlePasteSubMask(container.id, index + 1)}
                   handleCopy={() => copySubMaskToClipboard(subMask)}
                   hasCopiedSubMask={!!copiedSubMask}
@@ -1706,6 +1719,7 @@ function SettingsPanel({
                       },
                     })
                   }
+                  {...(param.key !== 'grow' && { fillOrigin: 'min' })}
                 />
               ))}
 

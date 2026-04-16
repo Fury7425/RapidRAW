@@ -124,6 +124,7 @@ function EffectsPanel({
                 step={1}
                 value={adjustments.vignetteMidpoint}
                 onDragStateChange={onDragStateChange}
+                fillOrigin="min"
               />
               <Slider
                 label="Roundness"
@@ -143,6 +144,7 @@ function EffectsPanel({
                 step={1}
                 value={adjustments.vignetteFeather}
                 onDragStateChange={onDragStateChange}
+                fillOrigin="min"
               />
             </div>
           )}
@@ -170,6 +172,7 @@ function EffectsPanel({
                 step={1}
                 value={adjustments.grainSize}
                 onDragStateChange={onDragStateChange}
+                fillOrigin="min"
               />
               <Slider
                 defaultValue={50}
@@ -180,6 +183,7 @@ function EffectsPanel({
                 step={1}
                 value={adjustments.grainRoughness}
                 onDragStateChange={onDragStateChange}
+                fillOrigin="min"
               />
             </div>
           )}

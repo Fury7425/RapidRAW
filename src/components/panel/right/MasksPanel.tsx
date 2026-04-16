@@ -172,6 +172,7 @@ const BrushTools = ({ settings, onSettingsChange }: { settings: any; onSettingsC
       onChange={(e: any) => onSettingsChange((s: any) => ({ ...s, size: Number(e.target.value) }))}
       step={1}
       value={settings.size}
+      fillOrigin="min"
     />
     <Slider
       defaultValue={50}
@@ -181,6 +182,7 @@ const BrushTools = ({ settings, onSettingsChange }: { settings: any; onSettingsC
       onChange={(e: any) => onSettingsChange((s: any) => ({ ...s, feather: Number(e.target.value) }))}
       step={1}
       value={settings.feather}
+      fillOrigin="min"
     />
     <div className="grid grid-cols-2 gap-2 pt-2">
       <button
@@ -219,6 +221,7 @@ const FlowBrushTool = ({
       onChange={(e: ChangeEvent<HTMLInputElement>) => onFlowChange(Number(e.target.value))}
       step={1}
       value={flow}
+      fillOrigin="min"
     />
     <BrushTools settings={settings} onSettingsChange={onSettingsChange} />
   </div>
@@ -964,7 +967,8 @@ export default function MasksPanel({
 
   const handleDuplicateAndInvertContainer = (container: MaskContainer) => {
     const containerIndex = adjustments.masks.findIndex((mask) => mask.id === container.id);
-    const duplicatedContainer = cloneMaskContainerData(container, { invert: true, rename: true });
+    const duplicatedContainer = cloneMaskContainerData(container, { invert: true, rename: false });
+    duplicatedContainer.name = `${container.name} Inverted`;
 
     insertMaskContainer(duplicatedContainer, containerIndex >= 0 ? containerIndex + 1 : undefined);
   };
@@ -988,10 +992,19 @@ export default function MasksPanel({
     insertSubMaskIntoContainer(containerId, duplicatedSubMask, insertIndex);
   };
 
-  const handleDuplicateAndInvertSubMask = (containerId: string, subMask: SubMask, insertIndex?: number) => {
-    const duplicatedSubMask = cloneSubMaskData(subMask, { invert: true, rename: true });
+  const handleDuplicateAndInvertSubMask = (containerId: string, subMask: SubMask) => {
+    const parentContainer = adjustments.masks.find((m) => m.id === containerId);
+    if (!parentContainer) return;
 
-    insertSubMaskIntoContainer(containerId, duplicatedSubMask, insertIndex);
+    const duplicatedSubMask = cloneSubMaskData(subMask, { invert: true, rename: false });
+    const newContainer = cloneMaskContainerData(parentContainer, { rename: false });
+
+    newContainer.name = `${getSubMaskName(subMask)} Inverted`;
+    newContainer.subMasks = [duplicatedSubMask];
+    newContainer.invert = false;
+
+    const parentIndex = adjustments.masks.findIndex((m) => m.id === containerId);
+    insertMaskContainer(newContainer, parentIndex >= 0 ? parentIndex + 1 : undefined);
   };
 
   const handlePasteSubMask = (containerId: string, insertIndex?: number) => {
@@ -1747,7 +1760,7 @@ function ContainerRow({
                   updateSubMask={updateSubMask}
                   handleDelete={() => handleDeleteSubMask(container.id, subMask.id)}
                   handleDuplicate={() => handleDuplicateSubMask(container.id, subMask, index + 1)}
-                  handleDuplicateAndInvert={() => handleDuplicateAndInvertSubMask(container.id, subMask, index + 1)}
+                  handleDuplicateAndInvert={() => handleDuplicateAndInvertSubMask(container.id, subMask)}
                   handlePaste={() => handlePasteSubMask(container.id, index + 1)}
                   handleCopy={() => copySubMaskToClipboard(subMask)}
                   hasCopiedSubMask={!!copiedSubMask}
@@ -2257,6 +2270,7 @@ function SettingsPanel({
                 : handleMaskPropertyChange('opacity', Number(e.target.value))
             }
             step={1}
+            fillOrigin="min"
           />
 
           {isComponentMode && (
@@ -2299,11 +2313,13 @@ function SettingsPanel({
                   onChange={(e: any) =>
                     handleSubMaskParametersChange({ [param.key]: parseFloat(e.target.value) / (param.multiplier || 1) })
                   }
+                  {...(param.key !== 'grow' && { fillOrigin: 'min' })}
                 />
               ))}
 
-              {subMaskConfig.showBrushTools && brushSettings && (
-                activeSubMask.type === Mask.Flow ? (
+              {subMaskConfig.showBrushTools &&
+                brushSettings &&
+                (activeSubMask.type === Mask.Flow ? (
                   <FlowBrushTool
                     flow={activeSubMask.parameters?.flow ?? 10}
                     onFlowChange={(flow: number) => handleSubMaskParametersChange({ flow })}
@@ -2312,8 +2328,7 @@ function SettingsPanel({
                   />
                 ) : (
                   <BrushTools settings={brushSettings} onSettingsChange={setBrushSettings} />
-                )
-              )}
+                ))}
             </>
           )}
         </div>
